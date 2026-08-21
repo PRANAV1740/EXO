@@ -8,7 +8,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame, type FinalReport } from '../lib/gameState';
-import { EW047_EVIDENCE_CARDS } from '../lib/ew047';
+import { EW047_EVIDENCE_CARDS, isMisleadingCard } from '../lib/ew047';
 import { scoreRound4 } from '../lib/scoring';
 
 const WORD_LIMIT = 400;
@@ -87,9 +87,9 @@ export default function Report() {
     dispatch({ type: 'SET_FINAL_REPORT', report });
 
     // Score Round 4
-    // The misleading evidence card is index 6
+    // The misleading evidence card is Astronomer's Notes (isMisleadingCard)
     const fellForMisleading = state.evidenceTrust.some(
-      (e) => e.cardIndex === 6 && e.trusted === true
+      (e) => isMisleadingCard(e.cardIndex) && e.trusted === true
     );
     const correctVerdict = report.verdict === 'FALSE_POSITIVE';
     const elapsed = getElapsedMs(4);

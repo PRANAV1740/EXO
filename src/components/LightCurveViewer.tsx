@@ -13,7 +13,7 @@
  * All coordinates use exact pixel-to-data mapping — no charting library.
  */
 
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Point } from '../lib/lightcurve';
 
 // ---------------------------------------------------------------------------
@@ -50,6 +50,8 @@ interface LightCurveViewerProps {
   enableDipMarkers?: boolean;
   enableVerticalMarkers?: boolean;
   enableHorizontalLines?: boolean;
+  // Initial view window span in days (e.g. 5.0 for zoomed initial view where transit >= 5% width)
+  initialViewWindowDays?: number;
   // Callbacks
   onStateChange?: (state: ViewerState) => void;
   // Initial state
@@ -100,6 +102,7 @@ export function LightCurveViewer({
   enableDipMarkers = true,
   enableVerticalMarkers = true,
   enableHorizontalLines = true,
+  initialViewWindowDays,
   onStateChange,
   initialState,
   readOnly = false,
@@ -138,33 +141,37 @@ export function LightCurveViewer({
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [mouseData, setMouseData] = useState<{ t: number; flux: number } | null>(null);
 
-  // Compute data bounds
+  // Compute data bounds using percentile limits (0.5th to 99.5th) to protect against outlier spikes
   useEffect(() => {
     if (points.length === 0) return;
 
+    const sortedFlux = [...points].map((p) => p.flux).sort((a, b) => a - b);
+    const p005Idx = Math.floor(sortedFlux.length * 0.005);
+    const p995Idx = Math.min(sortedFlux.length - 1, Math.ceil(sortedFlux.length * 0.995));
+    let fMin = sortedFlux[p005Idx] ?? sortedFlux[0];
+    let fMax = sortedFlux[p995Idx] ?? sortedFlux[sortedFlux.length - 1];
+
     let tMin = Infinity, tMax = -Infinity;
-    let fMin = Infinity, fMax = -Infinity;
     for (const p of points) {
       if (p.t < tMin) tMin = p.t;
       if (p.t > tMax) tMax = p.t;
-      if (p.flux < fMin) fMin = p.flux;
-      if (p.flux > fMax) fMax = p.flux;
     }
     const fRange = fMax - fMin || 0.01;
-    const fPad = fRange * 0.05;
+    const fPad = fRange * 0.08;
     fMin -= fPad;
     fMax += fPad;
 
     dataBoundsRef.current = { tMin, tMax, fMin, fMax };
 
-    // Set initial view if not set
+    // Set initial view with initialViewWindowDays zoom if specified
     if (viewTMin === null) {
+      const initialSpan = initialViewWindowDays ?? (tMax - tMin);
       setViewTMin(tMin);
-      setViewTMax(tMax);
+      setViewTMax(Math.min(tMax, tMin + initialSpan));
       setViewFMin(fMin);
       setViewFMax(fMax);
     }
-  }, [points]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [points, initialViewWindowDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Notify parent of state changes
   useEffect(() => {
@@ -211,14 +218,21 @@ export function LightCurveViewer({
     [viewFMin, viewFMax, plotH]
   );
 
-  // Reset view to auto-scaled bounds
+  // Reset view to initial zoomed bounds
   const resetView = useCallback(() => {
     const { tMin, tMax, fMin, fMax } = dataBoundsRef.current;
+    const initialSpan = initialViewWindowDays ?? (tMax - tMin);
     setViewTMin(tMin);
-    setViewTMax(tMax);
+    setViewTMax(Math.min(tMax, tMin + initialSpan));
     setViewFMin(fMin);
     setViewFMax(fMax);
-  }, []);
+  }, [initialViewWindowDays]);
+
+  const isFullView = useMemo(() => {
+    if (viewTMin === null || viewTMax === null) return true;
+    const { tMin, tMax } = dataBoundsRef.current;
+    return Math.abs(viewTMin - tMin) < 0.2 && Math.abs(viewTMax - tMax) < 0.2;
+  }, [viewTMin, viewTMax]);
 
   // ---------------------------------------------------------------------------
   // Drawing
@@ -778,18 +792,70 @@ export function LightCurveViewer({
       ? Math.abs(verticalMarkers.end - verticalMarkers.start)
       : null;
 
+  const setPresetWindow = useCallback((days: number) => {
+    const { tMin, tMax, fMin, fMax } = dataBoundsRef.current;
+    setViewTMin(tMin);
+    setViewTMax(Math.min(tMax, tMin + days));
+    setViewFMin(fMin);
+    setViewFMax(fMax);
+  }, []);
+
   return (
     <div ref={containerRef} className={`inline-block ${className}`}>
       {/* Toolbar */}
       {!readOnly && (
-        <div className="flex items-center justify-between mb-2 px-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
           <div className="flex items-center gap-3 text-xs text-muted">
             <span>Double-click: dip marker</span>
             <span>Ctrl+dbl: vertical markers</span>
             <span>Shift+dbl: horizontal lines</span>
             <span>Scroll: zoom • Drag: pan</span>
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex items-center gap-2">
+            {/* Preset View Buttons */}
+            <div className="flex items-center gap-1 bg-surface p-0.5 rounded border border-border">
+              <button
+                onClick={() => {
+                  const { tMin, tMax, fMin, fMax } = dataBoundsRef.current;
+                  setViewTMin(tMin);
+                  setViewTMax(tMax);
+                  setViewFMin(fMin);
+                  setViewFMax(fMax);
+                }}
+                className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                  isFullView
+                    ? 'bg-accent text-white font-semibold'
+                    : 'text-subtle hover:text-text'
+                }`}
+                title="View full 18-day observation span"
+              >
+                🌐 Full (18d)
+              </button>
+              <button
+                onClick={() => setPresetWindow(9.0)}
+                className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                  !isFullView && viewTMin !== null && viewTMax !== null && Math.abs((viewTMax - viewTMin) - 9.0) < 0.5
+                    ? 'bg-accent text-white font-semibold'
+                    : 'text-subtle hover:text-text'
+                }`}
+                title="Show 9-day window (3 transits visible for periodicity)"
+              >
+                👁️ 9d (3 Dips)
+              </button>
+              <button
+                onClick={() => setPresetWindow(3.0)}
+                className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                  !isFullView && viewTMin !== null && viewTMax !== null && Math.abs((viewTMax - viewTMin) - 3.0) < 0.5
+                    ? 'bg-accent text-white font-semibold'
+                    : 'text-subtle hover:text-text'
+                }`}
+                title="Zoom into 3-day window (transit dip occupies >5% width)"
+              >
+                🔍 3d (Zoomed Dip)
+              </button>
+            </div>
+
             {(dipMarkers.length > 0 || verticalMarkers.start !== null || horizontalLines.baseline !== null) && (
               <button
                 onClick={() => {

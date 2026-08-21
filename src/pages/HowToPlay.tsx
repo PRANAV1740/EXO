@@ -172,6 +172,12 @@ export default function HowToPlay() {
         {/* Navigation Action */}
         <div className="flex justify-center gap-4 pt-4">
           <button
+            onClick={() => navigate('/tutorial')}
+            className="px-6 py-3 bg-surface border border-accent/60 text-bright rounded-lg hover:bg-accent/10 transition-colors font-medium text-sm flex items-center gap-2"
+          >
+            🎬 Watch Animated Walkthrough
+          </button>
+          <button
             onClick={() => navigate('/handbook')}
             className="px-6 py-3 bg-surface border border-border text-text rounded-lg hover:border-accent transition-colors font-medium text-sm"
           >

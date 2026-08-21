@@ -173,6 +173,7 @@ export default function Round1() {
             points={currentCurve.points}
             width={880}
             height={340}
+            initialViewWindowDays={9.0}
             enableDipMarkers={true}
             enableVerticalMarkers={false}
             enableHorizontalLines={false}

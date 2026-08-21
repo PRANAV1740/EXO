@@ -17,6 +17,8 @@ import Results from './pages/Results';
 import Admin from './pages/Admin';
 import TestCurves from './pages/TestCurves';
 
+import Tutorial from './pages/Tutorial';
+
 function AppContent() {
   const [isHandbookOverlayOpen, setIsHandbookOverlayOpen] = useState(false);
   const location = useLocation();
@@ -49,6 +51,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/setup" element={<TeamSetup />} />
+          <Route path="/tutorial" element={<Tutorial />} />
           <Route path="/how-to-play" element={<HowToPlay />} />
           <Route path="/handbook" element={<Handbook />} />
           <Route path="/round/1" element={<Round1 />} />

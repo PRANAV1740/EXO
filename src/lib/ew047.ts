@@ -19,22 +19,47 @@ import { generateCurve, type GeneratedCurve } from './lightcurve';
 // Fixed seed for ALL teams
 const EW047_SEED = 47047047;
 
+// Official misleading card definition (0-based index 5 = "Astronomer's Notes")
+export const EW047_MISLEADING_CARD_INDEX = 5;
+export const EW047_MISLEADING_CARD_TITLE = "Astronomer's Notes";
+
+export function isMisleadingCard(index: number): boolean {
+  return index === EW047_MISLEADING_CARD_INDEX;
+}
+
 // ---------------------------------------------------------------------------
 // Light curves (generated)
 // ---------------------------------------------------------------------------
 
-/** Primary observation — eclipsing binary with planet-plausible depth */
+/** Primary observation — eclipsing binary with planet-plausible depth (3.60% / 3.06%) */
 export const EW047_PRIMARY: GeneratedCurve = generateCurve(
   'eclipsingBinary',
   EW047_SEED,
-  'medium'
+  'medium',
+  false,
+  {
+    oddDepth: 0.0360,
+    evenDepth: 0.0306,
+    period: 4.73,
+    durationHours: 3.2,
+    starRadiusSolar: 1.02,
+  }
 );
 
 /** Second observation — same system, different epoch */
 export const EW047_SECONDARY: GeneratedCurve = generateCurve(
   'eclipsingBinary',
   EW047_SEED + 1000,
-  'medium'
+  'medium',
+  false,
+  {
+    oddDepth: 0.0360,
+    evenDepth: 0.0306,
+    period: 4.73,
+    durationHours: 3.2,
+    starRadiusSolar: 1.02,
+    epoch: 1.25,
+  }
 );
 
 // ---------------------------------------------------------------------------
@@ -79,11 +104,13 @@ export const EW047_TRANSIT_DATA = {
 
 export const EW047_FP_CHECKS = {
   oddEvenDepth: {
-    oddDepthPercent: 3.65,
-    evenDepthPercent: 3.18,
-    differencePercent: 14.8,
-    significance: '2.1σ',
-    note: 'Marginal difference — could be statistical noise at this SNR, but consistent across both observations.',
+    // Relative formula: (oddDepth - evenDepth) / oddDepth * 100
+    // (3.60 - 3.06) / 3.60 * 100 = 15.0%
+    oddDepthPercent: 3.60,
+    evenDepthPercent: 3.06,
+    differencePercent: 15.0,
+    significance: '2.4σ',
+    note: 'Clear depth alternation between odd and even transits (15.0% difference), characteristic of an eclipsing binary.',
   },
   centroidShift: {
     detected: true,
@@ -175,14 +202,14 @@ export const EW047_EVIDENCE_CARDS: EvidenceCard[] = [
     index: 5,
     title: "Astronomer's Notes",
     category: 'Expert Assessment',
-    isMisleading: false,
+    isMisleading: true, // THE misleading item per spec ("strong Jupiter-class candidate")
     hasInteractiveCurve: false,
   },
   {
     index: 6,
     title: 'Survey Classification Report',
     category: 'External Reference',
-    isMisleading: true, // THE misleading item
+    isMisleading: false,
     hasInteractiveCurve: false,
   },
 ];

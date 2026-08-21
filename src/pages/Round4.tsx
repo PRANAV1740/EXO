@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame, type EvidenceTrust } from '../lib/gameState';
 import { LightCurveViewer } from '../components/LightCurveViewer';
+import { MiniCurveRenderer } from '../components/MiniCurveRenderer';
 import {
   EW047_PRIMARY,
   EW047_SECONDARY,
@@ -105,18 +106,19 @@ export default function Round4() {
           </p>
         </div>
 
-        {/* Evidence cards grid */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        {/* Evidence cards grid (Full-width for light curve cards) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {EW047_EVIDENCE_CARDS.map((card) => {
             const trust = evidenceTrust.find((e) => e.cardIndex === card.index);
             const isOpen = openCard === card.index;
+            const isFullWidthCard = card.index === 0 || card.index === 1;
 
             return (
               <div
                 key={card.index}
                 className={`bg-panel rounded-lg border transition-colors ${
-                  isOpen ? 'border-accent' : 'border-border'
-                }`}
+                  isFullWidthCard ? 'col-span-1 md:col-span-2' : ''
+                } ${isOpen ? 'border-accent' : 'border-border'}`}
               >
                 {/* Card header */}
                 <div
@@ -230,18 +232,54 @@ function CardContent({ cardIndex }: { cardIndex: number }) {
   switch (cardIndex) {
     case 0: // Primary light curve
       return (
-        <div>
-          <div className="text-xs text-muted mb-2">
-            Primary photometric observation — Epoch 1
+        <div className="space-y-4">
+          <div className="text-xs text-muted mb-1 flex items-center justify-between">
+            <span>Primary photometric observation — Epoch 1 (Default 10.5d view shows 3 transits on screen together)</span>
+            <span className="text-warning font-mono">Odd/Even vertical separation: 15.9px</span>
           </div>
           <LightCurveViewer
             points={EW047_PRIMARY.points}
-            width={520}
-            height={280}
+            width={1000}
+            height={340}
+            initialViewWindowDays={10.5}
             enableDipMarkers={true}
             enableVerticalMarkers={true}
             enableHorizontalLines={true}
           />
+
+          {/* Side-by-Side Zoomed Dip Comparison Panel */}
+          <div className="bg-surface/80 rounded-lg border border-border p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-bright uppercase tracking-wider">
+                🔬 Side-by-Side Zoomed Dip Comparison (Dip 1 vs Dip 2)
+              </span>
+              <span className="text-[11px] text-muted font-mono">
+                Dip 1: <strong className="text-accent">3.60%</strong> (Odd) • Dip 2: <strong className="text-warning">3.06%</strong> (Even)
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-void p-2 rounded border border-border">
+                <div className="text-[10px] text-accent font-semibold mb-1">
+                  Dip 1 (Odd Transit, t = 1.32d) — 3.60% Depth (Zoomed 2.5d window, &gt;5% width)
+                </div>
+                <MiniCurveRenderer
+                  points={EW047_PRIMARY.points.filter((p) => p.t >= 0 && p.t <= 2.5)}
+                  width={460}
+                  height={150}
+                />
+              </div>
+              <div className="bg-void p-2 rounded border border-border">
+                <div className="text-[10px] text-warning font-semibold mb-1">
+                  Dip 2 (Even Transit, t = 6.05d) — 3.06% Depth (Zoomed 2.5d window, &gt;5% width)
+                </div>
+                <MiniCurveRenderer
+                  points={EW047_PRIMARY.points.filter((p) => p.t >= 4.8 && p.t <= 7.3)}
+                  width={460}
+                  height={150}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       );
 
@@ -249,12 +287,13 @@ function CardContent({ cardIndex }: { cardIndex: number }) {
       return (
         <div>
           <div className="text-xs text-muted mb-2">
-            Follow-up observation — Epoch 2
+            Follow-up observation — Epoch 2 (10.5d view)
           </div>
           <LightCurveViewer
             points={EW047_SECONDARY.points}
-            width={520}
-            height={280}
+            width={1000}
+            height={340}
+            initialViewWindowDays={10.5}
             enableDipMarkers={true}
             enableVerticalMarkers={true}
             enableHorizontalLines={true}

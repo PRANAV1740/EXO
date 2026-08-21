@@ -207,6 +207,7 @@ function CurveCard({
           points={curve.points}
           width={900}
           height={300}
+          initialViewWindowDays={6.0}
         />
       ) : (
         <MiniCurveRenderer

@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isMisleadingCard } from '../lib/ew047';
 
 interface Submission {
   team: { name: string; member1: string; member2: string; seed: number } | null;
@@ -118,7 +119,7 @@ export default function Admin() {
               <tbody>
                 {submissions.map((sub, i) => {
                   const fellForMisleading = sub.evidenceTrust?.some(
-                    (e) => e.cardIndex === 6 && e.trusted === true
+                    (e) => isMisleadingCard(e.cardIndex) && e.trusted === true
                   );
 
                   return (

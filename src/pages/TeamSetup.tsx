@@ -1,6 +1,7 @@
 /**
  * Team Setup — team name + two member names.
  * Derives the seed from a hash of the team name.
+ * Offers tutorial walkthrough dialog upon completion if not yet completed.
  */
 
 import { useState } from 'react';
@@ -15,6 +16,7 @@ export default function TeamSetup() {
   const [teamName, setTeamName] = useState('');
   const [member1, setMember1] = useState('');
   const [member2, setMember2] = useState('');
+  const [showOfferDialog, setShowOfferDialog] = useState(false);
 
   const canSubmit = teamName.trim().length > 0 && member1.trim().length > 0 && member2.trim().length > 0;
 
@@ -32,11 +34,28 @@ export default function TeamSetup() {
         seed,
       },
     });
+
+    // Check if tutorial flag is set
+    const tutorialDone = localStorage.getItem('exoplanet-watch-tutorial-done') === 'true';
+    if (!tutorialDone) {
+      setShowOfferDialog(true);
+    } else {
+      navigate('/how-to-play');
+    }
+  };
+
+  const handleWatchTutorial = () => {
+    localStorage.setItem('exoplanet-watch-tutorial-done', 'true');
+    navigate('/tutorial');
+  };
+
+  const handleSkipTutorial = () => {
+    localStorage.setItem('exoplanet-watch-tutorial-done', 'true');
     navigate('/how-to-play');
   };
 
   return (
-    <div className="min-h-screen bg-void flex items-center justify-center">
+    <div className="min-h-screen bg-void flex items-center justify-center relative">
       <div className="w-full max-w-md p-8">
         <h1 className="text-2xl font-bold text-bright mb-2 text-center">
           Team Registration
@@ -106,6 +125,37 @@ export default function TeamSetup() {
           </button>
         </form>
       </div>
+
+      {/* Tutorial Offer Dialog Modal */}
+      {showOfferDialog && (
+        <div className="fixed inset-0 z-50 bg-void/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-panel border border-border rounded-xl p-6 max-w-md w-full text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-accent/20 border border-accent/40 text-accent text-2xl flex items-center justify-center mx-auto">
+              🔭
+            </div>
+            <h2 className="text-lg font-bold text-bright">
+              New to Light Curves?
+            </h2>
+            <p className="text-xs text-subtle leading-relaxed">
+              We recommend taking the <strong className="text-text">4-minute animated walkthrough</strong> before starting Round 1. It demonstrates how to detect planets, read graphs, and use the plot tools.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleWatchTutorial}
+                className="flex-1 py-2.5 bg-accent text-white rounded-lg font-semibold text-xs hover:bg-accent-glow transition-colors"
+              >
+                Watch Walkthrough 🎬
+              </button>
+              <button
+                onClick={handleSkipTutorial}
+                className="flex-1 py-2.5 bg-surface border border-border text-subtle rounded-lg font-medium text-xs hover:text-text hover:border-accent transition-colors"
+              >
+                Skip to Mission →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

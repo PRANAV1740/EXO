@@ -18,10 +18,8 @@
 import type { RoundNumber, RoundScore, Round1CurveSubmission, Round2CaseSubmission, Round3Submission } from './gameState';
 import type { CurveTruth } from './lightcurve';
 
-// ---------------------------------------------------------------------------
-// Weight table
-// ---------------------------------------------------------------------------
-
+// NOTE: ROUND_WEIGHTS is the single source of truth for round scoring weights.
+// If changed, also update Scene11Visual in src/components/tutorial/TutorialScenes.tsx!
 export const ROUND_WEIGHTS: Record<RoundNumber, {
   accuracy: number;
   dataAnalysis: number;
@@ -216,7 +214,7 @@ interface Round3ToleranceBand {
 }
 
 const ROUND3_TOLERANCES: Record<string, Round3ToleranceBand> = {
-  depth: { fullMarksFraction: 0.20, halfMarksFraction: 0.40 },
+  depth: { fullMarksFraction: 0.15, halfMarksFraction: 0.30 }, // 15% full marks / 30% half marks to balance pixel grid quantization
   period: { fullMarksFraction: 0.10, halfMarksFraction: 0.25 },
   duration: { fullMarksFraction: 0.10, halfMarksFraction: 0.25 },
 };

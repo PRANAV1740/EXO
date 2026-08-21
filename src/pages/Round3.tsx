@@ -39,9 +39,9 @@ export default function Round3() {
 
   const teamSeed = state.team?.seed ?? 42;
 
-  // Generate a planet curve for the data room
+  // Generate a planet curve for the data room (0.15% depth floor for measurement task)
   const curve = useMemo(
-    () => generateCurve('planet', teamSeed + 2000, 'medium'),
+    () => generateCurve('planet', teamSeed + 2000, 'medium', false, { depthFloor: 0.0015 }),
     [teamSeed]
   );
   const { truth } = curve;
@@ -133,6 +133,7 @@ export default function Round3() {
                 points={curve.points}
                 width={820}
                 height={380}
+                initialViewWindowDays={10.0}
                 enableDipMarkers={true}
                 enableVerticalMarkers={true}
                 enableHorizontalLines={true}

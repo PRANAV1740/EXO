@@ -81,12 +81,20 @@ export default function Handbook() {
               Mission Handbook
             </h1>
           </div>
-          <button
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 bg-surface border border-border text-subtle text-sm rounded-lg hover:text-text hover:border-accent transition-colors"
-          >
-            ← Back
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate('/tutorial')}
+              className="px-4 py-2 bg-surface border border-accent/60 text-bright text-sm rounded-lg hover:bg-accent/10 transition-colors font-medium flex items-center gap-1.5"
+            >
+              🎬 Watch Tutorial
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 bg-surface border border-border text-subtle text-sm rounded-lg hover:text-text hover:border-accent transition-colors"
+            >
+              ← Back
+            </button>
+          </div>
         </div>
 
         {/* Section 1: Exoplanets and the Transit Method */}

@@ -93,8 +93,11 @@ function noiseDifficultyScale(difficulty: Difficulty): number {
 // ---------------------------------------------------------------------------
 
 function generateStellarProps(rng: () => number) {
-  const starRadiusSolar = uniformRange(rng, 0.5, 2.0);
-  const starTempK = uniformRange(rng, 3500, 8000);
+  // Option A: Widen host star radius range to 0.35–1.80 R☉ (M-dwarfs to F-dwarfs)
+  // so that visible transit depths (0.4%–3.0%) produce a realistic mix of
+  // Neptune-class (2–6 R⊕) and Jupiter-class (> 6 R⊕) planets.
+  const starRadiusSolar = uniformRange(rng, 0.35, 1.80);
+  const starTempK = uniformRange(rng, 3200, 7500);
   return { starRadiusSolar, starTempK };
 }
 
@@ -105,16 +108,22 @@ function generateStellarProps(rng: () => number) {
 function generatePlanet(
   rng: () => number,
   difficulty: Difficulty,
-  marginal: boolean = false
+  marginal: boolean = false,
+  overrides?: CurveOverrides
 ): GeneratedCurve {
   const { starRadiusSolar, starTempK } = generateStellarProps(rng);
 
-  // Transit parameters
-  const depth = marginal
-    ? uniformRange(rng, 0.001, 0.004) // very shallow for marginal
-    : uniformRange(rng, 0.005, 0.03); // clear planet
-  const period = uniformRange(rng, 1.5, 12);
-  const durationHours = uniformRange(rng, 1.5, 5);
+  // Transit parameters: log-uniform depth sampling
+  // Minimum depth floor by task:
+  // - Default (Rounds 1 & 2 detection): 0.40% floor (0.0040)
+  // - Explicit override / Round 3 measurement: 0.15% floor (0.0015)
+  // - Marginal detection test: 0.10% to 0.20%
+  const depthFloor = overrides?.depthFloor ?? (marginal ? 0.0010 : 0.0040);
+  const logMin = Math.log(depthFloor);
+  const logMax = Math.log(0.030);
+  const depth = overrides?.depth ?? Math.exp(uniformRange(rng, logMin, logMax));
+  const period = uniformRange(rng, 1.5, 8);
+  const durationHours = uniformRange(rng, 1.5, 4.5);
   const durationDays = durationHours / 24;
   const epoch = uniformRange(rng, 0, period);
   const ingressFraction = uniformRange(rng, 0.10, 0.20);
@@ -124,9 +133,9 @@ function generatePlanet(
   const baseNoiseSigma = uniformRange(rng, depth / 8, depth / 3);
   const noiseSigma = baseNoiseSigma * noiseDifficultyScale(difficulty);
 
-  // Observation window
-  const totalDays = uniformRange(rng, 20, 40);
-  const numPoints = uniformInt(rng, 600, 1200);
+  // Observation window: 14–20 days at 10-minute cadence (144 points/day)
+  const totalDays = uniformRange(rng, 14, 20);
+  const numPoints = Math.round((totalDays * 24 * 60) / 10);
 
   // Generate points
   const points: Point[] = [];
@@ -193,35 +202,52 @@ function generatePlanet(
   };
 }
 
+export interface CurveOverrides {
+  depth?: number;
+  depthFloor?: number;
+  oddDepth?: number;
+  evenDepth?: number;
+  period?: number;
+  durationHours?: number;
+  epoch?: number;
+  starRadiusSolar?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Eclipsing binary generator
 // ---------------------------------------------------------------------------
 
 function generateEclipsingBinary(
   rng: () => number,
-  difficulty: Difficulty
+  difficulty: Difficulty,
+  overrides?: CurveOverrides
 ): GeneratedCurve {
-  const { starRadiusSolar, starTempK } = generateStellarProps(rng);
+  const { starRadiusSolar: defaultStarR, starTempK } = generateStellarProps(rng);
+  const starRadiusSolar = overrides?.starRadiusSolar ?? defaultStarR;
 
-  // Deep transits
-  const baseDepth = uniformRange(rng, 0.05, 0.30);
-  const period = uniformRange(rng, 1.5, 12);
-  const durationHours = uniformRange(rng, 1.5, 5);
+  // Log-uniform depth range 2% to 25% (or explicit override)
+  const logMin = Math.log(0.02);
+  const logMax = Math.log(0.25);
+  const baseDepth = overrides?.depth ?? Math.exp(uniformRange(rng, logMin, logMax));
+
+  const period = overrides?.period ?? uniformRange(rng, 1.5, 8);
+  const durationHours = overrides?.durationHours ?? uniformRange(rng, 1.5, 5);
   const durationDays = durationHours / 24;
-  const epoch = uniformRange(rng, 0, period);
+  const epoch = overrides?.epoch ?? uniformRange(rng, 0, period);
   // V-shaped: tau = T/2 (no flat bottom)
   const tau = durationDays / 2;
 
-  // Alternating depths: odd transits 10–20% deeper than even
+  // Alternating depths: odd transits 10–20% deeper than even (or explicit overrides)
   const depthRatio = uniformRange(rng, 1.10, 1.20);
-  const oddDepth = baseDepth * depthRatio;
-  const evenDepth = baseDepth;
+  const oddDepth = overrides?.oddDepth ?? (baseDepth * depthRatio);
+  const evenDepth = overrides?.evenDepth ?? baseDepth;
 
   const baseNoiseSigma = uniformRange(rng, baseDepth / 10, baseDepth / 5);
   const noiseSigma = baseNoiseSigma * noiseDifficultyScale(difficulty);
 
-  const totalDays = uniformRange(rng, 20, 40);
-  const numPoints = uniformInt(rng, 600, 1200);
+  // Observation window: 14–20 days at 10-minute cadence
+  const totalDays = uniformRange(rng, 14, 20);
+  const numPoints = Math.round((totalDays * 24 * 60) / 10);
 
   const points: Point[] = [];
   const transitTimes: number[] = [];
@@ -238,8 +264,8 @@ function generateEclipsingBinary(
       const tc = transitTimes[idx];
       const dt = t - tc;
       const halfDur = durationDays / 2;
-      // Odd/even alternating depth
-      const currentDepth = idx % 2 === 0 ? evenDepth : oddDepth;
+      // Odd/even alternating depth: 1st dip (idx=0) is oddDepth (deeper), 2nd dip (idx=1) is evenDepth
+      const currentDepth = idx % 2 === 0 ? oddDepth : evenDepth;
 
       if (Math.abs(dt) <= halfDur) {
         const distFromCenter = Math.abs(dt);
@@ -304,8 +330,9 @@ function generateStellarVariability(
   const baseNoiseSigma = uniformRange(rng, 0.001, 0.003);
   const noiseSigma = baseNoiseSigma * noiseDifficultyScale(difficulty);
 
-  const totalDays = uniformRange(rng, 20, 40);
-  const numPoints = uniformInt(rng, 600, 1200);
+  // Observation window: 14–20 days at 10-minute cadence
+  const totalDays = uniformRange(rng, 14, 20);
+  const numPoints = Math.round((totalDays * 24 * 60) / 10);
 
   const points: Point[] = [];
   for (let i = 0; i < numPoints; i++) {
@@ -354,8 +381,9 @@ function generateInstrumentNoise(
   const noiseSigma = baseNoiseSigma * noiseDifficultyScale(difficulty);
   const numSpikes = uniformInt(rng, 3, 6);
 
-  const totalDays = uniformRange(rng, 20, 40);
-  const numPoints = uniformInt(rng, 600, 1200);
+  // Observation window: 14–20 days at 10-minute cadence
+  const totalDays = uniformRange(rng, 14, 20);
+  const numPoints = Math.round((totalDays * 24 * 60) / 10);
 
   const points: Point[] = [];
 
@@ -488,15 +516,16 @@ export function generateCurve(
   type: CurveType,
   seed: number,
   difficulty: Difficulty = 'medium',
-  marginal: boolean = false
+  marginal: boolean = false,
+  overrides?: CurveOverrides
 ): GeneratedCurve {
   const rng = mulberry32(seed);
 
   switch (type) {
     case 'planet':
-      return generatePlanet(rng, difficulty, marginal);
+      return generatePlanet(rng, difficulty, marginal, overrides);
     case 'eclipsingBinary':
-      return generateEclipsingBinary(rng, difficulty);
+      return generateEclipsingBinary(rng, difficulty, overrides);
     case 'stellarVariability':
       return generateStellarVariability(rng, difficulty);
     case 'instrumentNoise':
