@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  /* Observatory dark palette */
+  --color-void: #0a0e17;
+  --color-deep: #0f1628;
+  --color-panel: #151d30;
+  --color-surface: #1a2340;
+  --color-border: #243055;
+  --color-muted: #4a5580;
+  --color-subtle: #6b7db0;
+  --color-text: #c8d4f0;
+  --color-bright: #e8eeff;
+
+  /* Accent colors */
+  --color-accent: #4f8ff7;
+  --color-accent-glow: #6ba3ff;
+  --color-transit-mark: #ff6b4a;
+  --color-baseline: #50e88a;
+  --color-transit-level: #f0c040;
+  --color-vertical-marker: #c084fc;
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* Base styles */
+body {
+  @apply bg-void text-text antialiased;
+  font-family: var(--font-sans);
+  min-width: 1024px;
+}
+
+/* Scrollbar styling for the observatory feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+/* Selection styling */
+::selection {
+  background-color: rgba(79, 143, 247, 0.3);
+}
